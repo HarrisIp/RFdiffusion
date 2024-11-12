@@ -1,0 +1,9 @@
+Metadata-Version: 2.1
+Name: rfdiffusion
+Version: 1.1.0
+Summary: RFdiffusion is an open source method for protein structure generation.
+Home-page: https://github.com/RosettaCommons/RFdiffusion
+Author: Rosetta Commons
+License-File: LICENSE
+Requires-Dist: torch
+Requires-Dist: se3-transformer
