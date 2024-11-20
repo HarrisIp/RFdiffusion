@@ -97,7 +97,7 @@ class SymGen:
         self.sym_rots = sym_rots
         self.order = order
 
-    def _apply_cyclic(self, coords_in, seq_in):
+    '''def _apply_cyclic(self, coords_in, seq_in):
         coords_out = torch.clone(coords_in)
         seq_out = torch.clone(seq_in)
         if seq_out.shape[0] % self.order != 0:
@@ -115,9 +115,9 @@ class SymGen:
                     'bnj,kj->bnk', coords_out[subunit_chain_start:subunit_chain_end], self.sym_rots[i]
                 )
             seq_out[chain_index:chain_index + subunit_len] = seq_out[subunit_chain_start:subunit_chain_end]
-        return coords_out, seq_out
+        return coords_out, seq_out'''
         #ORIGINAL CODE#
-    '''def _apply_cyclic(self, coords_in, seq_in):
+    def _apply_cyclic(self, coords_in, seq_in):
         coords_out = torch.clone(coords_in)
         seq_out = torch.clone(seq_in)
         if seq_out.shape[0] % self.order != 0:
@@ -130,7 +130,7 @@ class SymGen:
             coords_out[start_i:end_i] = torch.einsum(
                 'bnj,kj->bnk', coords_out[:subunit_len], self.sym_rots[i])
             seq_out[start_i:end_i]  = seq_out[:subunit_len]
-        return coords_out, seq_out'''
+        return coords_out, seq_out
         ##
         
     def _lin_chainbreaks(self, num_breaks, res_idx, chains_per_subunit=2, offset=None):
@@ -142,22 +142,23 @@ class SymGen:
         if offset is None:
             offset = res_idx.shape[-1]
         
-        for i in range(num_breaks):
-            for j in range(chains_per_subunit):
-                start_i = subunit_len * (i * chains_per_subunit + j)
-                end_i = subunit_len * (i * chains_per_subunit + j + 1)
-                
-                # Update the chain delimiters based on multiple chains per subunit
-                chain_labels = list(string.ascii_uppercase) + [str(i+j) for i in
-                        string.ascii_uppercase for j in string.ascii_uppercase]
-                
-                chain_delimiters.extend(
-                    [chain_labels[i] for _ in range(subunit_len)]
-                )
-                res_idx[:, start_i:end_i] = res_idx[:, start_i:end_i] + offset * (i + 1)
+        for i in range(num_breaks * chains_per_subunit):
+
+            start_i = subunit_len * i
+            end_i = subunit_len * (i+1)
+            
+            # Update the chain delimiters based on multiple chains per subunit
+            chain_labels = list(string.ascii_uppercase) + [str(i+j) for i in
+                    string.ascii_uppercase for j in string.ascii_uppercase]
+            
+            chain_delimiters.extend(
+                [chain_labels[i] for _ in range(subunit_len)]
+            )
+            res_idx[:, start_i:end_i] = res_idx[:, start_i:end_i] + offset * (i + 1)
 
         return res_idx, chain_delimiters
-    #original#    
+    
+    #original#
     '''def _lin_chainbreaks(self, num_breaks, res_idx, offset=None):
         assert res_idx.ndim == 2
         res_idx = torch.clone(res_idx)
