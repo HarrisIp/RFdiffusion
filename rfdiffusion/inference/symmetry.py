@@ -7,6 +7,8 @@ import string
 import logging
 import numpy as np
 import pathlib
+from rfdiffusion.contigs import ContigMap
+from omegaconf import ListConfig
 
 format_rots = lambda r: torch.tensor(r).float()
 
@@ -33,10 +35,11 @@ saved_symmetries = ['tetrahedral', 'octahedral', 'icosahedral']
 
 class SymGen:
 
-    def __init__(self, global_sym, recenter, radius, model_only_neighbors=False):
+    def __init__(self, global_sym, recenter, radius, model_only_neighbors=False, contig=None):
         self._log = logging.getLogger(__name__)
         self._recenter = recenter
         self._radius = radius
+        self._contig = contig
 
         if global_sym.lower().startswith('c'):
             # Cyclic symmetry
@@ -88,35 +91,47 @@ class SymGen:
     #####################
     ## Cyclic symmetry ##
     #####################
+
+    
     def _init_cyclic(self, order):
+        self.order = order
+        
         sym_rots = []
         for i in range(order):
-            deg = i * 360.0 / order
+            deg = i * 360.0 / order / chain_per_subunit
             r = Rotation.from_euler('z', deg, degrees=True)
             sym_rots.append(format_rots(r.as_matrix()))
         self.sym_rots = sym_rots
-        self.order = order
 
-    '''def _apply_cyclic(self, coords_in, seq_in):
-        coords_out = torch.clone(coords_in)
-        seq_out = torch.clone(seq_in)
-        if seq_out.shape[0] % self.order != 0:
-            raise ValueError(
-                f'Sequence length must be divisble by {self.order}')
-        chains_per_subunit = 2 # assume 2 chains per symmetry unit first
-        subunit_len = seq_out.shape[0] // self.order // chains_per_subunit
-        for i in range(self.order):
-            for j in range(chains_per_subunit):
-                chain_index = subunit_len * chains_per_subunit * i + subunit_len * j
-                subunit_chain_start = subunit_len * j
-                subunit_chain_end = subunit_len * (j + 1)
-                
-                coords_out[chain_index:chain_index + subunit_len] = torch.einsum(
-                    'bnj,kj->bnk', coords_out[subunit_chain_start:subunit_chain_end], self.sym_rots[i]
-                )
-            seq_out[chain_index:chain_index + subunit_len] = seq_out[subunit_chain_start:subunit_chain_end]
-        return coords_out, seq_out'''
-        #ORIGINAL CODE#
+
+        
+    ###TEST
+    def _get_nchain():
+        # Parse the contig to determine subunit lengths
+        if isinstance(self._contig, ListConfig):
+            sampled_mask = list(self._contig)[0].split()
+        elif isinstance(self._contig, list):
+            sampled_mask = self._contig
+        else:
+            raise ValueError(f"Unexpected type for self._contig: {type(self._contig)}")
+        subunit_lengths = [int(part.split("/")[0]) for part in sampled_mask]
+        nchains = len(sampled_mask)
+        chain_per_subunit = nchains / self.order
+        return nchains
+    
+    def _get_chain_per_subunit(self):
+        # Parse the contig to determine subunit lengths
+        if isinstance(self._contig, ListConfig):
+            sampled_mask = list(self._contig)[0].split()
+        elif isinstance(self._contig, list):
+            sampled_mask = self._contig
+        else:
+            raise ValueError(f"Unexpected type for self._contig: {type(self._contig)}")
+        nchains = len(sampled_mask)
+        chain_per_subunit = nchains / self.order
+        return chain_per_subunit
+    ###
+    ###ORIGINAL
     def _apply_cyclic(self, coords_in, seq_in):
         coords_out = torch.clone(coords_in)
         seq_out = torch.clone(seq_in)
@@ -131,32 +146,139 @@ class SymGen:
                 'bnj,kj->bnk', coords_out[:subunit_len], self.sym_rots[i])
             seq_out[start_i:end_i]  = seq_out[:subunit_len]
         return coords_out, seq_out
-        ##
-        
-    def _lin_chainbreaks(self, num_breaks, res_idx, chains_per_subunit=2, offset=None):
-        assert res_idx.ndim == 2
+
+    
+
+    
+    ###test###
+    '''def _apply_cyclic(self, coords_in, seq_in):
+        """
+        Applies cyclic symmetry to the input coordinates and sequence.
+
+        Args:
+            coords_in (torch.Tensor): Input coordinates, shape [L, N, 3].
+            seq_in (torch.Tensor): Input sequence, shape [L, num_classes].
+
+        Returns:
+            tuple: Transformed coordinates and sequence after applying cyclic symmetry.
+        """
+        coords_out = torch.clone(coords_in)
+        seq_out = torch.clone(seq_in)
+        # Parse the contig to determine subunit lengths
+        if isinstance(self._contig, ListConfig):
+            sampled_mask = list(self._contig)[0].split()
+        elif isinstance(self._contig, list):
+            sampled_mask = self._contig
+        else:
+            raise ValueError(f"Unexpected type for self._contig: {type(self._contig)}")
+        # Extract subunit lengths from the parsed mask
+        subunit_lengths = [int(part.split("/")[0]) for part in sampled_mask]
+        nchains = len(sampled_mask)
+        chain_per_subunit = nchains / self.order
+        # Ensure total sequence length matches the sum of subunit lengths
+        total_length = sum(subunit_lengths)
+        if seq_out.shape[0] != total_length:
+            raise ValueError(
+                f"Mismatch between sequence length ({seq_out.shape[0]}) and "
+                f"total subunit length ({total_length})."
+            )
+        current_index = 0
+        nchains = len(subunit_lengths)  # Number of chains provided
+        chain_per_subunit = nchains // self.order  # Chains per symmetry unit
+        if nchains % self.order != 0:
+            raise ValueError(
+                f"The number of chains ({nchains}) must be divisible by the symmetry order ({self.order})."
+            )
+        for subunit_idx in range(self.order):  # Iterate over symmetry order
+
+            for chain_idx in range(chain_per_subunit):  # Iterate over chains within one symmetry unit
+                # Get the current subunit length
+                subunit_length = subunit_lengths[subunit_idx * chain_per_subunit + chain_idx]
+                start_idx = current_index
+                end_idx = current_index + subunit_length
+
+                # Ensure rotation order matches symmetry requirements
+                if subunit_idx >= self.order:
+                    raise ValueError(
+                        f"Subunit index ({subunit_idx}) exceeds symmetry order ({self.order}). Subunit lengths: {subunit_lengths}"
+                    )
+                # Apply rotation for the current subunit
+                coords_out[start_idx:end_idx] = torch.einsum(
+                    'bnj,kj->bnk', coords_out[:subunit_length], self.sym_rots[subunit_idx]
+                )
+                seq_out[start_idx:end_idx] = seq_out[:subunit_length].clone()
+                # Update the current index for the next chain
+                current_index = end_idx
+
+        # Ensure all residues were processed
+        if current_index != total_length:
+            raise ValueError(
+                f"Mismatch during symmetry application. Processed residues ({current_index}) "
+                f"do not match total residues ({total_length})."
+            )
+
+        return coords_out, seq_out'''
+    
+        ###break chain in same symmetry unit###
+    def _lin_chainbreaks(self, num_breaks, res_idx, offset=None):
+        # Handle ListConfig and ensure it's treated as a list
+        if  isinstance(self._contig, str ):
+            sampled_mask = self._contig.split(' ')
+        elif isinstance(self._contig, ListConfig):
+            sampled_mask = list(self._contig)
+            sampled_mask = sampled_mask[0].split()
+        elif isinstance(self._contig, list): 
+            sampled_mask = self._contig
+        else:
+            raise ValueError(f"Unexpected type for self._contig: {type(self._contig)}")
+
+        assert res_idx.ndim == 2, "res_idx must be a 2D tensor"
+
         res_idx = torch.clone(res_idx)
-        subunit_len = res_idx.shape[-1] // (num_breaks * chains_per_subunit)
-        
         chain_delimiters = []
+
+        # Generate chain labels
+        chain_labels = list(string.ascii_uppercase) + [
+            f"{i}{j}" for i in string.ascii_uppercase for j in string.ascii_uppercase
+        ]
+
+        # Set default offset if not provided
         if offset is None:
             offset = res_idx.shape[-1]
-        
-        for i in range(num_breaks * chains_per_subunit):
 
-            start_i = subunit_len * i
-            end_i = subunit_len * (i+1)
-            
-            # Update the chain delimiters based on multiple chains per subunit
-            chain_labels = list(string.ascii_uppercase) + [str(i+j) for i in
-                    string.ascii_uppercase for j in string.ascii_uppercase]
-            
-            chain_delimiters.extend(
-                [chain_labels[i] for _ in range(subunit_len)]
+        current_chain_label_idx = 0
+        current_residue_index = 0  # Tracks the residue position in res_idx
+
+        for mask_part in sampled_mask:
+            # Parse mask_part to get mask_count
+            try:
+                mask_count = int(mask_part.split("/")[0])  # Get the number of residues
+            except ValueError:
+                raise ValueError(f"Invalid format in sampled_mask: {mask_part}")
+
+            # Ensure enough chain labels
+            if current_chain_label_idx >= len(chain_labels):
+                raise ValueError("Not enough chain labels for the given configuration.")
+
+            # Extend chain_delimiters for the current mask part
+            chain_delimiters.extend([chain_labels[current_chain_label_idx]] * mask_count)
+
+            # Update res_idx with the correct offsets for the current segment
+            end_residue_index = current_residue_index + mask_count
+            res_idx[:, current_residue_index:end_residue_index] += offset * (current_chain_label_idx + 1)
+
+            # Update indices and chain label index
+            current_residue_index = end_residue_index
+            current_chain_label_idx += 1
+
+        # Verify that the chain_delimiters list matches the total residues in res_idx
+        if len(chain_delimiters) != res_idx.shape[-1]:
+            raise ValueError(
+                f"Mismatch between chain_delimiters ({len(chain_delimiters)}) and residues in res_idx ({res_idx.shape[-1]}), self._contig: {self._contig[0]}, sampled mask{sampled_mask}{type(sampled_mask[0])}"
             )
-            res_idx[:, start_i:end_i] = res_idx[:, start_i:end_i] + offset * (i + 1)
 
         return res_idx, chain_delimiters
+
     
     #original#
     '''def _lin_chainbreaks(self, num_breaks, res_idx, offset=None):

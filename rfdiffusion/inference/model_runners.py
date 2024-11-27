@@ -139,6 +139,7 @@ class Sampler:
                 self.inf_conf.recenter,
                 self.inf_conf.radius,
                 self.inf_conf.model_only_neighbors,
+                self.contig_conf.contigs
             )
         else:
             self.symmetry = None

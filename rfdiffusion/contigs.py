@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 import random
+from omegaconf import ListConfig
 
 
 class ContigMap:
@@ -12,26 +13,6 @@ class ContigMap:
     Default chain outputs are inpainted chains as A (and B, C etc if multiple chains), and all fragments of receptor chain on the next one (generally B)
     Output chains can be specified. Sequence must be the same number of elements as in contig string
     """
-    def get_input_chain_count(self):
-        """
-        Get the number of distinct input chains based on sampled_mask.
-        """
-        # Initialize a set to track unique chains
-        unique_chains = set()
-        
-        # Loop through each element in the sampled mask
-        for mask_element in self.sampled_mask:
-            # Split each contig section by '/' to handle multiple subchains
-            subcontigs = mask_element.split("/")
-            
-            # Add each chain identifier to the unique_chains set
-            for subcontig in subcontigs:
-                # Only add if it has an alphabetical chain identifier
-                if subcontig[0].isalpha():
-                    unique_chains.add(subcontig[0])  # Add chain letter only
-
-        return len(unique_chains)
-
 
     def __init__(
         self,

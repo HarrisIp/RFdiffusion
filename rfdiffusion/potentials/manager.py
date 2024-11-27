@@ -154,7 +154,7 @@ class PotentialManager:
             # symmetric oligomer contact potential args
             if self.inference_config.symmetry:
 
-                num_chains = calc_nchains(symbol=self.inference_config.symmetry, components=1) # hard code 1 for now 
+                num_chains = calc_nchains(symbol=self.inference_config.symmetry, components=2) # hard code 2 for now 
                 contact_kwargs={'nchain':num_chains,
                                 'intra_all':self.potentials_config.olig_intra_all,
                                 'inter_all':self.potentials_config.olig_inter_all,
