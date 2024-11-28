@@ -297,7 +297,8 @@ class Sampler:
                                                   self.diffuser_conf,
                                                   self.inf_conf,
                                                   self.hotspot_0idx,
-                                                  self.binderlen)
+                                                  self.binderlen,
+                                                  self.contig_conf.contigs)
 
         ###################################
         ### Initialize other attributes ###
@@ -315,7 +316,16 @@ class Sampler:
         ####################################
         ### Generate initial coordinates ###
         ####################################
+        ###test###
+        '''sampled_mask = list(self._contig)[0].split()
+        nchains = len(sampled_mask)
+        chain_per_subunit = nchains / self.order
+        L_mapped'''
 
+
+
+
+        ###
         if self.diffuser_conf.partial_T:
             assert xyz_27.shape[0] == L_mapped, f"there must be a coordinate in the input PDB for \
                     each residue implied by the contig string for partial diffusion.  length of \
@@ -330,7 +340,8 @@ class Sampler:
             # Fully diffusing from points initialised at the origin
             # adjust size of input xt according to residue map
             xyz_mapped = torch.full((1,1,L_mapped,27,3), np.nan)
-            xyz_mapped[:, :, contig_map.hal_idx0, ...] = xyz_27[contig_map.ref_idx0,...]
+            #xyz_mapped[:, :, contig_map.hal_idx0, ...] = xyz_27[contig_map.ref_idx0,...]
+
             xyz_motif_prealign = xyz_mapped.clone()
             motif_prealign_com = xyz_motif_prealign[0,0,:,1].mean(dim=0)
             self.motif_com = xyz_27[contig_map.ref_idx0,1].mean(dim=0)

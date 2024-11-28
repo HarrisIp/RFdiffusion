@@ -98,7 +98,7 @@ class SymGen:
         
         sym_rots = []
         for i in range(order):
-            deg = i * 360.0 / order / chain_per_subunit
+            deg = i * 360.0 / order
             r = Rotation.from_euler('z', deg, degrees=True)
             sym_rots.append(format_rots(r.as_matrix()))
         self.sym_rots = sym_rots

@@ -1,6 +1,7 @@
 import torch
 from rfdiffusion.potentials import potentials as potentials
 import numpy as np 
+from omegaconf import ListConfig
 
 
 def make_contact_matrix(nchain, intra_all=False, inter_all=False, contact_string=None):
@@ -88,11 +89,13 @@ class PotentialManager:
                  inference_config,
                  hotspot_0idx,
                  binderlen,
+                 contig=None
                  ):
 
         self.potentials_config = potentials_config
         self.ppi_config        = ppi_config
         self.inference_config  = inference_config
+        self._contig = contig
 
         self.guide_scale = potentials_config.guide_scale
         self.guide_decay = potentials_config.guide_decay
@@ -137,7 +140,21 @@ class PotentialManager:
             if not key == 'type': setting_dict[key] = float(setting_dict[key])
 
         return setting_dict
-
+    ###
+    def _get_chain_per_subunit(self):
+        symmetry = self.inference_config.symmetry
+        order = int(symmetry[1:])
+        # Parse the contig to determine subunit lengths
+        if isinstance(self._contig, ListConfig):
+            sampled_mask = list(self._contig)[0].split()
+        elif isinstance(self._contig, list):
+            sampled_mask = self._contig
+        else:
+            raise ValueError(f"Unexpected type for self._contig{self._contig}: {type(self._contig)}")
+        nchains = len(sampled_mask)
+        chain_per_subunit = int(nchains / order)
+        return chain_per_subunit
+    ###
     def initialize_all_potentials(self, setting_list):
         '''
             Given a list of potential dictionaries where each dictionary defines the configurations for a single potential,
@@ -150,11 +167,11 @@ class PotentialManager:
             assert(potential_dict['type'] in potentials.implemented_potentials), f'potential with name: {potential_dict["type"]} is not one of the implemented potentials: {potentials.implemented_potentials.keys()}'
 
             kwargs = {k: potential_dict[k] for k in potential_dict.keys() - {'type'}}
-
+            chain_per_subunit = self._get_chain_per_subunit()
             # symmetric oligomer contact potential args
             if self.inference_config.symmetry:
 
-                num_chains = calc_nchains(symbol=self.inference_config.symmetry, components=2) # hard code 2 for now 
+                num_chains = calc_nchains(symbol=self.inference_config.symmetry, components=chain_per_subunit) 
                 contact_kwargs={'nchain':num_chains,
                                 'intra_all':self.potentials_config.olig_intra_all,
                                 'inter_all':self.potentials_config.olig_inter_all,
