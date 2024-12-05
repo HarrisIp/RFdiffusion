@@ -1,6 +1,8 @@
 import torch
 import numpy as np 
 from rfdiffusion.util import generate_Cbeta
+from omegaconf import ListConfig
+
 
 class Potential:
     '''
@@ -229,6 +231,7 @@ class olig_contacts(Potential):
 
     def __init__(self, 
                  contact_matrix, 
+                 contig,
                  weight_intra=1, 
                  weight_inter=1,
                  r_0=8, d_0=2):
@@ -248,6 +251,8 @@ class olig_contacts(Potential):
         self.weight_inter = weight_inter 
         self.r_0 = r_0
         self.d_0 = d_0
+        self._contig = contig
+
 
         # check contact matrix only contains valid entries 
         assert all([i in [-1,0,1] for i in contact_matrix.flatten()]), 'Contact matrix must contain only 0, 1, or -1 in entries'
@@ -261,13 +266,22 @@ class olig_contacts(Potential):
         self.nchain=shape[0]
 
          
-    def _get_idx(self,i,L):
+    def _get_idx(self,i):
         """
         Returns the zero-indexed indices of the residues in chain i
         """
-        assert L%self.nchain == 0
-        Lchain = L//self.nchain
-        return i*Lchain + torch.arange(Lchain)
+        if isinstance(self._contig, ListConfig):
+            sampled_mask = list(self._contig)[0].split()
+        else:
+            raise ValueError(f"Unexpected type for self._contig{self._contig}: {type(self._contig)}")
+        j=0
+        idx_sofar = 0
+        current_chain = 0
+        while (j < i):
+            current_chain = sampled_mask[j]
+            idx_sofar = idx_sofar + int(current_chain)
+            j += 1
+        return idx_sofar + torch.arange(current_chain)
 
 
     def compute(self, xyz):
@@ -275,18 +289,54 @@ class olig_contacts(Potential):
         Iterate through the contact matrix, compute contact potentials between chains that need it,
         and negate contacts for any 
         """
-        L = xyz.shape[0]
+        
 
         all_contacts = 0
         start = 0
+        # weight, don't double count intra 
+        #WM1
+        '''weight_matrix = [[1,1,0.5,1,0.5,1],
+                         [1,1,1,0.5,1,0.5],
+                         [0.5,1,1,1,0.5,1],
+                         [1,0.5,1,1,1,0.5],
+                         [0.5,1,0.5,1,1,1,],
+                         [1,0.5,1,0.5,1,1],
+                        ]'''
+        #WM2
+        '''weight_matrix = [[0.5,1,0.5,1,0.5,1],
+                         [1,0.5,1,0.5,1,0.5],
+                         [0.5,1,0.5,1,0.5,1],
+                         [1,0.5,1,0.5,1,0.5],
+                         [0.5,1,0.5,1,0.5,1,],
+                         [1,0.5,1,0.5,1,0,5],
+                        ]'''
+        #WM3
+        '''weight_matrix = [[0.5,0.4,0.2,0.4,0.2,0.4],
+                         [0.4,0.5,0.4,0.2,0.4,0.2],
+                         [0.2,0.4,0.5,0.4,0.2,0.4],
+                         [0.4,0.2,0.4,0.5,0.4,0.2],
+                         [0.2,0.4,0.2,0.4,0.5,0.4,],
+                         [0.4,0.2,0.4,0.2,0.4,0.5],
+                        ]'''
+        #WM4
+        weight_matrix = [[0.5,0.6,0.3,0.6,0.3,0.6],
+                         [0.6,0.5,0.6,0.3,0.6,0.3],
+                         [0.3,0.6,0.5,0.6,0.3,0.6],
+                         [0.6,0.3,0.6,0.5,0.6,0.3],
+                         [0.3,0.6,0.3,0.6,0.5,0.6,],
+                         [0.6,0.3,0.6,0.3,0.6,0.5],
+                        ]
+        
+
+
         for i in range(self.nchain):
             for j in range(self.nchain):
                 # only compute for upper triangle, disregard zeros in contact matrix 
                 if (i <= j) and (self.contact_matrix[i,j] != 0):
 
                     # get the indices for these two chains 
-                    idx_i = self._get_idx(i,L)
-                    idx_j = self._get_idx(j,L)
+                    idx_i = self._get_idx(i)
+                    idx_j = self._get_idx(j)
 
                     Ca_i = xyz[idx_i,1]  # slice out crds for this chain 
                     Ca_j = xyz[idx_j,1]  # slice out crds for that chain 
@@ -299,9 +349,12 @@ class olig_contacts(Potential):
 
                     # weight, don't double count intra 
                     scalar = (i==j)*self.weight_intra/2 + (i!=j)*self.weight_inter
+                    
 
                     #                 contacts              attr/repuls          relative weights 
-                    all_contacts += ncontacts.sum() * self.contact_matrix[i,j] * scalar 
+                    all_contacts += ncontacts.sum() * self.contact_matrix[i,j] * weight_matrix[i][j] 
+        
+
 
         return all_contacts 
                     

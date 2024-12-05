@@ -177,7 +177,11 @@ class PotentialManager:
                                 'inter_all':self.potentials_config.olig_inter_all,
                                 'contact_string':self.potentials_config.olig_custom_contact }
                 contact_matrix = make_contact_matrix(**contact_kwargs)
+                contig = self._contig
+                kwargs.update({'contig':contig})
                 kwargs.update({'contact_matrix':contact_matrix})
+                
+
 
 
             to_apply.append(potentials.implemented_potentials[potential_dict['type']](**kwargs))
