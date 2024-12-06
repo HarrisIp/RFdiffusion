@@ -274,14 +274,28 @@ class olig_contacts(Potential):
             sampled_mask = list(self._contig)[0].split()
         else:
             raise ValueError(f"Unexpected type for self._contig{self._contig}: {type(self._contig)}")
-        j=0
+        j = 0
+        k = 0
         idx_sofar = 0
         current_chain = 0
-        while (j < i):
-            current_chain = sampled_mask[j]
-            idx_sofar = idx_sofar + int(current_chain)
+        while (j < i + 1 ):
+            idx_sofar = idx_sofar + current_chain
             j += 1
+        while (k < i + 1 ):
+            
+            current_chain = sampled_mask[k]
+            current_chain = int(current_chain.split("/")[0])
+            k += 1
+            
         return idx_sofar + torch.arange(current_chain)
+    ###original
+    '''def _get_idx(self,i,L):
+        """
+        Returns the zero-indexed indices of the residues in chain i
+        """
+        assert L%self.nchain == 0
+        Lchain = L//self.nchain
+        return i*Lchain + torch.arange(Lchain)'''
 
 
     def compute(self, xyz):
@@ -290,7 +304,7 @@ class olig_contacts(Potential):
         and negate contacts for any 
         """
         
-
+        L = xyz.shape[0]
         all_contacts = 0
         start = 0
         # weight, don't double count intra 
@@ -319,12 +333,28 @@ class olig_contacts(Potential):
                          [0.4,0.2,0.4,0.2,0.4,0.5],
                         ]'''
         #WM4
-        weight_matrix = [[0.5,0.6,0.3,0.6,0.3,0.6],
+        '''weight_matrix = [[0.5,0.6,0.3,0.6,0.3,0.6],
                          [0.6,0.5,0.6,0.3,0.6,0.3],
                          [0.3,0.6,0.5,0.6,0.3,0.6],
                          [0.6,0.3,0.6,0.5,0.6,0.3],
                          [0.3,0.6,0.3,0.6,0.5,0.6,],
                          [0.6,0.3,0.6,0.3,0.6,0.5],
+                        ]'''
+        #WM5
+        '''weight_matrix = [[0.5,0.6,0.05,0.1,0.05,0.6],
+                         [0.6,0.5,0.6,0.05,0.1,0.05],
+                         [0.05,0.6,0.5,0.6,0.05,0.1],
+                         [0.1,0.05,0.6,0.5,0.6,0.05],
+                         [0.05,0.1,0.05,0.6,0.5,0.6,],
+                         [0.6,0.05,0.1,0.05,0.6,0.5],
+                        ]'''
+        #WM6 allattract
+        weight_matrix = [[0.5,0.4,0.2,0.1,0.2,0.4],
+                         [0.4,0.5,0.4,0.2,0.1,0.2],
+                         [0.2,0.4,0.5,0.4,0.2,0.1],
+                         [0.1,0.2,0.4,0.5,0.4,0.2],
+                         [0.2,0.1,0.2,0.4,0.5,0.4,],
+                         [0.4,0.2,0.1,0.2,0.4,0.5],
                         ]
         
 
@@ -353,8 +383,6 @@ class olig_contacts(Potential):
 
                     #                 contacts              attr/repuls          relative weights 
                     all_contacts += ncontacts.sum() * self.contact_matrix[i,j] * weight_matrix[i][j] 
-        
-
 
         return all_contacts 
                     

@@ -233,15 +233,12 @@ class SymGen:
             raise ValueError(f"Unexpected type for self._contig: {type(self._contig)}")
 
         assert res_idx.ndim == 2, "res_idx must be a 2D tensor"
-
         res_idx = torch.clone(res_idx)
         chain_delimiters = []
-
         # Generate chain labels
         chain_labels = list(string.ascii_uppercase) + [
             f"{i}{j}" for i in string.ascii_uppercase for j in string.ascii_uppercase
         ]
-
         # Set default offset if not provided
         if offset is None:
             offset = res_idx.shape[-1]
@@ -274,9 +271,8 @@ class SymGen:
         # Verify that the chain_delimiters list matches the total residues in res_idx
         if len(chain_delimiters) != res_idx.shape[-1]:
             raise ValueError(
-                f"Mismatch between chain_delimiters ({len(chain_delimiters)}) and residues in res_idx ({res_idx.shape[-1]}), self._contig: {self._contig[0]}, sampled mask{sampled_mask}{type(sampled_mask[0])}"
+                f"Mismatch between chain_delimiters ({len(chain_delimiters)}) and residues in res_idx ({res_idx.shape[-1]}) self._contig: {self._contig[0]}, sampled mask{sampled_mask}{type(sampled_mask[0])}"
             )
-
         return res_idx, chain_delimiters
 
     
