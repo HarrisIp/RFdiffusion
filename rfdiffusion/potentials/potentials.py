@@ -266,7 +266,7 @@ class olig_contacts(Potential):
         self.nchain=shape[0]
 
          
-    def _get_idx(self,i):
+    def _get_idx(self,i=0):
         """
         Returns the zero-indexed indices of the residues in chain i
         """
@@ -286,7 +286,7 @@ class olig_contacts(Potential):
             current_chain = sampled_mask[k]
             current_chain = int(current_chain.split("/")[0])
             k += 1
-            
+        #raise KeyError(f'{idx_sofar},{current_chain},{torch.arange(current_chain)}')    
         return idx_sofar + torch.arange(current_chain)
     ###original
     '''def _get_idx(self,i,L):
@@ -313,7 +313,7 @@ class olig_contacts(Potential):
                          [1,1,1,0.5,1,0.5],
                          [0.5,1,1,1,0.5,1],
                          [1,0.5,1,1,1,0.5],
-                         [0.5,1,0.5,1,1,1,],
+                         [0.5,1,0.5,1,1,1],
                          [1,0.5,1,0.5,1,1],
                         ]'''
         #WM2
@@ -321,7 +321,7 @@ class olig_contacts(Potential):
                          [1,0.5,1,0.5,1,0.5],
                          [0.5,1,0.5,1,0.5,1],
                          [1,0.5,1,0.5,1,0.5],
-                         [0.5,1,0.5,1,0.5,1,],
+                         [0.5,1,0.5,1,0.5,1],
                          [1,0.5,1,0.5,1,0,5],
                         ]'''
         #WM3
@@ -329,7 +329,7 @@ class olig_contacts(Potential):
                          [0.4,0.5,0.4,0.2,0.4,0.2],
                          [0.2,0.4,0.5,0.4,0.2,0.4],
                          [0.4,0.2,0.4,0.5,0.4,0.2],
-                         [0.2,0.4,0.2,0.4,0.5,0.4,],
+                         [0.2,0.4,0.2,0.4,0.5,0.4],
                          [0.4,0.2,0.4,0.2,0.4,0.5],
                         ]'''
         #WM4
@@ -337,7 +337,7 @@ class olig_contacts(Potential):
                          [0.6,0.5,0.6,0.3,0.6,0.3],
                          [0.3,0.6,0.5,0.6,0.3,0.6],
                          [0.6,0.3,0.6,0.5,0.6,0.3],
-                         [0.3,0.6,0.3,0.6,0.5,0.6,],
+                         [0.3,0.6,0.3,0.6,0.5,0.6],
                          [0.6,0.3,0.6,0.3,0.6,0.5],
                         ]'''
         #WM5
@@ -345,17 +345,33 @@ class olig_contacts(Potential):
                          [0.6,0.5,0.6,0.05,0.1,0.05],
                          [0.05,0.6,0.5,0.6,0.05,0.1],
                          [0.1,0.05,0.6,0.5,0.6,0.05],
-                         [0.05,0.1,0.05,0.6,0.5,0.6,],
+                         [0.05,0.1,0.05,0.6,0.5,0.6],
                          [0.6,0.05,0.1,0.05,0.6,0.5],
                         ]'''
         #WM6 allattract
-        weight_matrix = [[0.5,0.4,0.2,0.1,0.2,0.4],
+        '''weight_matrix = [[0.5,0.4,0.2,0.1,0.2,0.4],
                          [0.4,0.5,0.4,0.2,0.1,0.2],
                          [0.2,0.4,0.5,0.4,0.2,0.1],
                          [0.1,0.2,0.4,0.5,0.4,0.2],
-                         [0.2,0.1,0.2,0.4,0.5,0.4,],
+                         [0.2,0.1,0.2,0.4,0.5,0.4],
                          [0.4,0.2,0.1,0.2,0.4,0.5],
-                        ]
+                        ]'''
+        #WM7
+        '''weight_matrix = [[0.5,0.6,0.3,0.1,0.3,0.6],
+                         [0.6,0.5,0.6,0.3,0.1,0.3],
+                         [0.3,0.6,0.5,0.6,0.3,0.1],
+                         [0.1,0.3,0.6,0.5,0.6,0.3],
+                         [0.3,0.1,0.3,0.6,0.5,0.6],
+                         [0.6,0.3,0.1,0.3,0.6,0.5],
+                        ]'''
+        #WM8
+        '''weight_matrix = [[0.5,0.5,0.5,0.5,0.5,0.5],
+                         [0.5,0.5,0.5,0.5,0.5,0.5],
+                         [0.5,0.5,0.5,0.5,0.5,0.5],
+                         [0.5,0.5,0.5,0.5,0.5,0.5],
+                         [0.5,0.5,0.5,0.5,0.5,0.5],
+                         [0.5,0.5,0.5,0.5,0.5,0.5],
+                        ]'''
         
 
 
@@ -382,8 +398,10 @@ class olig_contacts(Potential):
                     
 
                     #                 contacts              attr/repuls          relative weights 
-                    all_contacts += ncontacts.sum() * self.contact_matrix[i,j] * weight_matrix[i][j] 
-
+                    #all_contacts += ncontacts.sum() * self.contact_matrix[i,j] * weight_matrix[i][j] 
+                    all_contacts += ncontacts.sum() * self.contact_matrix[i,j] * scalar
+                    #raise TabError(f'{i}{idx_i}{Ca_i}{j}{idx_j}{Ca_j}')      
+                    raise TabError(f'{scalar}')   
         return all_contacts 
                     
 def get_damped_lj(r_min, r_lin,p1=6,p2=12):
