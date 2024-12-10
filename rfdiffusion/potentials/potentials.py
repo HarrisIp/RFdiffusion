@@ -266,7 +266,7 @@ class olig_contacts(Potential):
         self.nchain=shape[0]
 
          
-    def _get_idx(self,i=0):
+    def _get_idx(self,i):
         """
         Returns the zero-indexed indices of the residues in chain i
         """
@@ -277,16 +277,20 @@ class olig_contacts(Potential):
         j = 0
         k = 0
         idx_sofar = 0
+        for idx in range(i):
+            count_chain = sampled_mask[idx]
+            count_chain = int(count_chain.split("/")[0])            
+            idx_sofar = idx_sofar + count_chain
         current_chain = 0
-        while (j < i + 1 ):
+        '''while (j < i + 1 ):
             idx_sofar = idx_sofar + current_chain
-            j += 1
+            j += 1'''
         while (k < i + 1 ):
             
             current_chain = sampled_mask[k]
             current_chain = int(current_chain.split("/")[0])
             k += 1
-        #raise KeyError(f'{idx_sofar},{current_chain},{torch.arange(current_chain)}')    
+        
         return idx_sofar + torch.arange(current_chain)
     ###original
     '''def _get_idx(self,i,L):
@@ -400,8 +404,8 @@ class olig_contacts(Potential):
                     #                 contacts              attr/repuls          relative weights 
                     #all_contacts += ncontacts.sum() * self.contact_matrix[i,j] * weight_matrix[i][j] 
                     all_contacts += ncontacts.sum() * self.contact_matrix[i,j] * scalar
-                    #raise TabError(f'{i}{idx_i}{Ca_i}{j}{idx_j}{Ca_j}')      
-                    raise TabError(f'{scalar}')   
+                         
+        #raise TabError(f'{i}{idx_i}{Ca_i}{j}{idx_j}{Ca_j}')             
         return all_contacts 
                     
 def get_damped_lj(r_min, r_lin,p1=6,p2=12):

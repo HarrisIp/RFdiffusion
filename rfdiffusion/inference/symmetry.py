@@ -273,6 +273,7 @@ class SymGen:
             raise ValueError(
                 f"Mismatch between chain_delimiters ({len(chain_delimiters)}) and residues in res_idx ({res_idx.shape[-1]}) self._contig: {self._contig[0]}, sampled mask{sampled_mask}{type(sampled_mask[0])}"
             )
+        
         return res_idx, chain_delimiters
 
     
